@@ -1,0 +1,67 @@
+{
+  "name": "@vanduo-oss/charts",
+  "version": "0.0.1",
+  "description": "Standalone SVG-first chart components for Vanduo dashboards and docs",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./css": "./dist/vanduo-charts.css",
+    "./iife": {
+      "default": "./dist/vanduo-charts.iife.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "vanduo",
+    "charts",
+    "svg",
+    "dashboard",
+    "bar-chart",
+    "line-chart",
+    "donut-chart"
+  ],
+  "license": "MIT",
+  "author": "vanduo-oss",
+  "homepage": "https://vanduo.dev/#docs/vd-charts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vanduo-oss/charts"
+  },
+  "sideEffects": [
+    "./dist/vanduo-charts.css",
+    "./dist/vanduo-charts.iife.js"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "clean": "rm -rf dist",
+    "prepack": "pnpm run build",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.59.1",
+    "esbuild": "^0.27.7"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@playwright/test",
+      "esbuild"
+    ]
+  },
+  "packageManager": "pnpm@10.28.2"
+}
