@@ -61,7 +61,10 @@
     "clean": "rm -rf dist",
     "prepack": "pnpm run build",
     "test": "playwright test",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "openspec:validate": "openspec validate --all",
+    "openspec:list": "openspec list",
+    "openspec:update": "openspec update"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",

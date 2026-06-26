@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  Package: @vanduo-oss/charts (MIT, vanduo-oss org). Current release version: 0.1.0.
+  Stack: Vanilla JavaScript (ESM source in src/index.js), esbuild → ESM/CJS/IIFE + CSS (scripts/build.js).
+  Charts: SVG-first; data in, accessible SVG out. Kinds: bar, line, area, scatter, donut, pie.
+  Vue (0.1.0): optional ./vue subpath export (src/vue.js → dist/vue.js, dist/vue.cjs, dist/vue.d.ts) ships
+  <VdChart> + per-kind components. `vue` is an OPTIONAL peer dependency, marked external in the build, never
+  bundled — the core stays framework-agnostic. The Vue component is SSR-safe (creates the chart on mount).
+  Tests: Playwright in tests/ (fixture server, baseURL http://localhost:8791); tests/unit + tests/e2e load
+  built dist and assert SVG DOM, accessibility, tooltips, datum-click events, and lifecycle.
+  Repo: Standalone git repo nested in the Vanduo monorepo (0_vanduo). Canonical source here; built dist/ is
+  synced into docs/ ecosystem assets by the docs sync scripts.
+  Public API contract: README.md + dist/vue.d.ts. Breaking changes require a semver bump and README updates.
+  Vanduo integration (optional): when window.Vanduo exists at load, the IIFE registers as `charts`, so scoped
+  Vanduo.init(root)/destroy(root)/reinit('charts', root) operate without framework changes.
+  Do not publish openspec/ to npm — the files field is dist/, README.md, LICENSE only.
+
+rules:
+  proposal:
+    - Call out npm semver impact and whether docs/ ecosystem asset sync is required
+    - Note if README, dist/vue.d.ts, or Playwright tests must change
+  specs:
+    - Use Given/When/Then scenario format under each requirement
+    - Use SHALL/MUST for normative requirements
+    - Keep the vanilla (framework-agnostic) core and the optional Vue bindings as separate capabilities
+  design:
+    - Prefer extending src/index.js, src/vue.js, and src/styles.css over new abstractions
+    - Keep `vue` an optional peer (external in esbuild); never bundle Vue into the core
+    - Document build-output impact (ESM, CJS, IIFE, CSS, vue.js/vue.cjs/vue.d.ts)
+  tasks:
+    - Include pnpm build and pnpm test when code changes
+    - Include README and dist/vue.d.ts updates when the public API changes
