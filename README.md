@@ -79,6 +79,48 @@ Vanduo.reinit('charts', root);
 
 Auto-init supports field-name accessors. Use the imported JS API for callback accessors and event handlers.
 
+## Vue 3
+
+Optional Vue 3 components ship at `@vanduo-oss/charts/vue`. `vue` is an *optional* peer dependency — it is needed only when you import this subpath, so vanilla/CDN consumers are unaffected. The components are SSR-safe (the chart is created on mount into a plain container the server can pre-render) and re-render reactively when their props change.
+
+```vue
+<script setup>
+import { VdChart } from '@vanduo-oss/charts/vue';
+import '@vanduo-oss/charts/css';
+
+const rows = [
+  { month: 'Jan', sales: 120 },
+  { month: 'Feb', sales: 180 },
+  { month: 'Mar', sales: 90 }
+];
+</script>
+
+<template>
+  <VdChart type="bar" :data="rows" x="month" y="sales" title="Sales" :height="300" />
+</template>
+```
+
+Per-kind components are also exported so you can drop the `type` prop: `VdBarChart`, `VdLineChart`, `VdAreaChart`, `VdScatterChart`, `VdDonutChart`, `VdPieChart`.
+
+### Props
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `type` | `'bar' \| 'line' \| 'area' \| 'scatter' \| 'donut' \| 'pie'` | `'bar'` | Chart kind (ignored by the per-kind components). |
+| `data` | `Array<Record<string, unknown>>` | `[]` | Row data. |
+| `x`, `y` | `string \| (row) => unknown` | — | Cartesian accessors (bar/line/area/scatter). |
+| `label`, `value` | `string \| (row) => unknown` | — | Pie/donut accessors. |
+| `title`, `description` | `string` | — | Written into the SVG accessibility metadata. |
+| `width` | `number` | — | Fixed width; omit for responsive. |
+| `height` | `number` | `300` | Container min-height in px. |
+| `innerRadiusRatio` | `number` | — | Donut/pie inner radius ratio. |
+| `color` | `string` | — | Single-series color override. |
+| `theme` | `Record<string, unknown>` | — | Token overrides (see **Theme**). |
+| `tooltip` | `(d) => string \| string \| false` | — | Custom tooltip or disable. |
+| `responsive` | `boolean` | `true` | Re-measure and re-render on container resize. |
+
+Types ship with the subpath (`dist/vue.d.ts`).
+
 ## Theme
 
 The renderer reads Vanduo CSS tokens from the chart target:

@@ -1,0 +1,90 @@
+# @vanduo-oss/charts v0.1.0 — LLM Context
+
+You are an expert on **@vanduo-oss/charts**, the **standalone SVG-first chart
+components** of the Vanduo design system. Data in, accessible SVG out. It is
+intentionally small: common 2D dashboard charts with **no** data fetching,
+dashboards, Canvas rendering, animation timelines, or grammar-of-graphics DSL.
+
+It ships two ways to consume the same factories:
+
+- **Vanilla / CDN** — `window.VanduoCharts`, auto-registers with `@vanduo-oss/framework`.
+- **Vue 3** — optional `@vanduo-oss/charts/vue` components (`vue` is an *optional* peer).
+
+---
+
+## Core Principles
+- **Framework-agnostic core**: the factories are plain JS; Vue is an opt-in subpath.
+- **Accessible SVG**: `title`/`description` are written into SVG accessibility metadata.
+- **Token-driven theming**: colors come from Vanduo CSS custom properties on the target.
+- **Lifecycle hygiene**: every instance owns `update()`, `resize()`, `destroy()`.
+
+---
+
+## Install
+```bash
+pnpm add @vanduo-oss/charts
+# Vue users also need `vue` (>=3.3) — already in most Vue apps.
+```
+
+## Exports
+| Export | Path | Contents |
+| --- | --- | --- |
+| `.` | `dist/index.js` + `dist/index.cjs` | chart factories, scales, path helpers, auto-init |
+| `./css` | `dist/vanduo-charts.css` | base chart/tooltip styles |
+| `./vue` | `dist/vue.js` (+ `dist/vue.d.ts`) | `VdChart` + per-kind Vue 3 components |
+| `./iife` | `dist/vanduo-charts.iife.js` | browser global `window.VanduoCharts` |
+
+> Note: the main entry currently ships **without** `.d.ts`; the `./vue` subpath **is** typed.
+
+## Chart Factories (JS)
+```js
+import { BarChart, DonutChart } from '@vanduo-oss/charts';
+import '@vanduo-oss/charts/css';
+
+const chart = BarChart({ target: '#chart', data: rows, x: 'month', y: d => d.sales, title: 'Sales' });
+chart.update({ data: nextRows });
+chart.resize();
+chart.destroy();
+```
+- `BarChart`, `LineChart`, `AreaChart`, `ScatterChart` — Cartesian; use `x`, `y`.
+- `DonutChart`, `PieChart` — categorical; use `label`, `value`.
+- Accessors are field names, nested paths, or `(row) => value` functions.
+- Common options: `target`, `data`, `title`, `description`, `tooltip`, `theme`, `width`, `height`, `responsive`, `onSliceClick`.
+
+## Vue 3 (`@vanduo-oss/charts/vue`)
+```vue
+<script setup>
+import { VdChart } from '@vanduo-oss/charts/vue';
+import '@vanduo-oss/charts/css';
+</script>
+<template>
+  <VdChart type="bar" :data="rows" x="month" y="sales" title="Sales" :height="300" />
+</template>
+```
+- Generic: `VdChart` with a `type` prop (`'bar' | 'line' | 'area' | 'scatter' | 'donut' | 'pie'`, default `'bar'`).
+- Per-kind: `VdBarChart`, `VdLineChart`, `VdAreaChart`, `VdScatterChart`, `VdDonutChart`, `VdPieChart`.
+- Props mirror factory options: `data`, `x`, `y`, `label`, `value`, `title`, `description`, `width`, `height` (default `300`), `innerRadiusRatio`, `color`, `theme`, `tooltip`, `responsive`.
+- **SSR-safe**: the chart is created on mount; props are reactive (changing `type` recreates, otherwise `update()` runs in place).
+
+## Vanduo Auto Init (Vanilla)
+The IIFE bundle exposes `window.VanduoCharts` and self-registers as the `charts`
+component when `window.Vanduo` is present:
+```html
+<div data-vd-chart="donut" data-vd-chart-data="#data" data-vd-label="channel" data-vd-value="revenue"></div>
+```
+```js
+Vanduo.init(root); Vanduo.destroy(root); Vanduo.reinit('charts', root);
+```
+Auto-init supports field-name accessors only; use the JS API for function accessors and event handlers.
+
+## Theme (CSS tokens, read from the target)
+`--vd-text-primary`, `--vd-text-muted`, `--vd-border-color`, `--vd-bg-primary`,
+and `--vd-chart-1` … `--vd-chart-8`. Aliases like `--text-primary` are fallbacks;
+built-in colors apply when no tokens are present.
+
+## Primitive exports
+`createAccessor`, `scaleLinear`, `scaleTime`, `scaleBand`, `scalePoint`,
+`scaleOrdinal`, `resolveTheme`, `ticks`, `niceDomain`, `linePath`, `areaPath`, `arcPath`.
+
+## Version
+`VD_CHARTS_VERSION` and `VanduoCharts.version` expose the package version.
