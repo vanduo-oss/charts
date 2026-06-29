@@ -48,6 +48,10 @@ const CHART_PROPS = {
   series: { type: Array, default: undefined },
   // `true` / `false` / `{ position }`.
   legend: { type: [Boolean, Object], default: undefined },
+  // Value labels on marks: `true` / `false` / `{ format, color }`.
+  dataLabels: { type: [Boolean, Object], default: undefined },
+  // Reference lines: `[{ y?, x?, label?, color?, dash? }]`.
+  annotations: { type: Array, default: undefined },
   // Axis range + ticks.
   xMin: { type: Number, default: undefined },
   xMax: { type: Number, default: undefined },
@@ -81,6 +85,8 @@ function optionsFrom(target, props) {
     responsive: props.responsive,
     series: props.series,
     legend: props.legend,
+    dataLabels: props.dataLabels,
+    annotations: props.annotations,
     xMin: props.xMin,
     xMax: props.xMax,
     yMin: props.yMin,
@@ -118,9 +124,10 @@ export const VdChart = defineComponent({
         props.type, props.data, props.x, props.y, props.label, props.value,
         props.color, props.title, props.description, props.width, props.height,
         props.innerRadiusRatio, props.theme, props.tooltip, props.responsive,
-        props.series, props.legend, props.xMin, props.xMax, props.yMin,
-        props.yMax, props.yTickCount, props.yIncludeZero, props.xFormat,
-        props.yFormat, props.xAxis, props.yAxis,
+        props.series, props.legend, props.dataLabels, props.annotations,
+        props.xMin, props.xMax, props.yMin, props.yMax, props.yTickCount,
+        props.yIncludeZero, props.xFormat, props.yFormat, props.xAxis,
+        props.yAxis,
       ],
       () => {
         if (!instance) return;

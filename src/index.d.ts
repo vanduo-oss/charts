@@ -65,6 +65,23 @@ export interface LegendOptions {
   position?: 'top' | 'right';
 }
 
+export interface DataLabelsOption {
+  /** Format the value shown (defaults to the chart's number formatting). */
+  format?: (value: number) => string;
+  color?: string;
+}
+
+export interface Annotation {
+  /** Horizontal reference line at this y value. */
+  y?: number;
+  /** Vertical reference line at this x value (numeric or category). */
+  x?: number | string;
+  label?: string;
+  color?: string;
+  /** Dashed by default; set `false` for a solid line. */
+  dash?: boolean;
+}
+
 export interface ClickEvent<T = Row> {
   event: Event;
   datum: T;
@@ -87,6 +104,8 @@ export interface BaseChartOptions<T = Row> {
   responsive?: boolean;
   /** Show a legend. Multi-series charts show one by default; pass `false` to hide. */
   legend?: boolean | LegendOptions;
+  /** Draw value labels on each mark. */
+  dataLabels?: boolean | DataLabelsOption;
 }
 
 export interface CartesianChartOptions<T = Row> extends BaseChartOptions<T> {
@@ -109,6 +128,8 @@ export interface CartesianChartOptions<T = Row> extends BaseChartOptions<T> {
   yIncludeZero?: boolean;
   /** Multiple series (bar → grouped, line/area → one path each). */
   series?: Series<T>[];
+  /** Reference lines drawn across the plot. */
+  annotations?: Annotation[];
   onPointClick?: (e: ClickEvent<T>) => void;
 }
 

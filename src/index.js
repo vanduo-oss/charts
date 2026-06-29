@@ -16,7 +16,7 @@ const DEFAULT_COLORS = [
   '#fd7e14'
 ];
 
-export const VD_CHARTS_VERSION = '0.1.1';
+export const VD_CHARTS_VERSION = '0.2.0';
 
 let chartId = 0;
 
@@ -811,6 +811,69 @@ function renderTopLegend(svg, items, theme, plot) {
   });
 }
 
+function dataLabelConfig(options) {
+  const dl = options.dataLabels;
+  if (!dl) return null;
+  return typeof dl === 'object' ? dl : {};
+}
+
+function drawDataLabel(svg, x, y, value, cfg, theme, anchor = 'middle') {
+  if (!isFiniteNumber(x) || !isFiniteNumber(y)) return;
+  append(svg, setText(svgEl('text', {
+    class: 'vd-chart-data-label',
+    x,
+    y,
+    fill: cfg.color || theme.textColor,
+    'font-size': 10,
+    'text-anchor': anchor
+  }), typeof cfg.format === 'function' ? cfg.format(value) : formatNumber(value)));
+}
+
+/**
+ * Reference lines. `annotations: Array<{ y?, x?, label?, color?, dash? }>` —
+ * `y` draws a horizontal line, `x` (numeric/category) a vertical one.
+ */
+function drawAnnotations(svg, options, plot, xScale, yScale, theme) {
+  const annotations = toArray(options.annotations);
+  if (!annotations.length) return;
+  const group = append(svg, svgEl('g', { class: 'vd-chart-annotations' }));
+  annotations.forEach((ann) => {
+    const color = ann.color || theme.mutedTextColor;
+    const dash = ann.dash === false ? null : '4 3';
+    if (isFiniteNumber(ann.y) && yScale) {
+      const y = yScale(ann.y);
+      if (!isFiniteNumber(y)) return;
+      append(group, svgEl('line', {
+        class: 'vd-chart-annotation-line',
+        x1: plot.left, y1: y, x2: plot.right, y2: y,
+        stroke: color, 'stroke-width': 1, 'stroke-dasharray': dash
+      }));
+      if (ann.label) {
+        append(group, setText(svgEl('text', {
+          x: plot.right - 4, y: y - 4, fill: color, 'font-size': 10, 'text-anchor': 'end'
+        }), ann.label));
+      }
+    }
+    if (ann.x != null && xScale) {
+      let x = xScale(ann.x);
+      if (typeof xScale.bandwidth === 'function' && isFiniteNumber(x)) {
+        x += xScale.bandwidth() / 2;
+      }
+      if (!isFiniteNumber(x)) return;
+      append(group, svgEl('line', {
+        class: 'vd-chart-annotation-line',
+        x1: x, y1: plot.top, x2: x, y2: plot.bottom,
+        stroke: color, 'stroke-width': 1, 'stroke-dasharray': dash
+      }));
+      if (ann.label) {
+        append(group, setText(svgEl('text', {
+          x: x + 4, y: plot.top + 10, fill: color, 'font-size': 10
+        }), ann.label));
+      }
+    }
+  });
+}
+
 function renderBarChart(instance) {
   if (instance.options.series?.length) return renderMultiBarChart(instance);
 
@@ -859,6 +922,8 @@ function renderBarChart(instance) {
     categoricalX: true
   });
 
+  drawAnnotations(svg, options, plot, xScale, yScale, theme);
+  const labels = dataLabelConfig(options);
   const markGroup = append(svg, svgEl('g', { class: 'vd-chart-marks vd-chart-bars' }));
   const baseline = yScale(0);
   rows.forEach((row) => {
@@ -884,6 +949,7 @@ function renderBarChart(instance) {
       datum: row.raw, x: row.x, y: row.y, value: row.y, label: row.x, index: row.index
     }, `${formatCategory(row.x)}: ${formatNumber(row.y)}`);
     attachClick(rect, options.onBarClick, row.raw, row.index);
+    if (labels) drawDataLabel(svg, x + xScale.bandwidth() / 2, rectY - 4, row.y, labels, theme);
     append(markGroup, rect);
   });
 
@@ -928,6 +994,8 @@ function renderMultiBarChart(instance) {
     plot, xScale, yScale, xTicks: categories, yTicks, theme, options, categoricalX: true
   });
 
+  drawAnnotations(svg, options, plot, xScale, yScale, theme);
+  const labels = dataLabelConfig(options);
   const markGroup = append(svg, svgEl('g', { class: 'vd-chart-marks vd-chart-bars' }));
   const baseline = yScale(0);
   seriesList.forEach((series) => {
@@ -956,6 +1024,7 @@ function renderMultiBarChart(instance) {
         index: row.index, seriesIndex: series.seriesIndex, seriesName: series.name
       }, `${series.name} — ${formatCategory(row.x)}: ${formatNumber(row.y)}`);
       attachClick(rect, options.onBarClick, row.raw, row.index);
+      if (labels) drawDataLabel(svg, groupX + offset + innerScale.bandwidth() / 2, rectY - 4, row.y, labels, theme);
       append(markGroup, rect);
     });
   });
@@ -1016,6 +1085,8 @@ function renderLineLikeChart(instance, mode) {
     categoricalX: xInfo.type === 'point'
   });
 
+  drawAnnotations(svg, options, plot, xInfo.scale, yScale, theme);
+  const labels = dataLabelConfig(options);
   const markGroup = append(svg, svgEl('g', { class: `vd-chart-marks vd-chart-${mode}` }));
 
   if (mode === 'area') {
@@ -1060,6 +1131,11 @@ function renderLineLikeChart(instance, mode) {
       append(markGroup, circle);
     });
   }
+
+  if (labels) {
+    points.forEach((point) =>
+      drawDataLabel(svg, point.x, point.y - 8, point.yValue, labels, theme));
+  }
 }
 
 function renderMultiLineChart(instance, mode) {
@@ -1095,6 +1171,8 @@ function renderMultiLineChart(instance, mode) {
     categoricalX: xInfo.type === 'point'
   });
 
+  drawAnnotations(svg, options, plot, xInfo.scale, yScale, theme);
+  const labels = dataLabelConfig(options);
   const markGroup = append(svg, svgEl('g', { class: `vd-chart-marks vd-chart-${mode}` }));
   const baseline = yScale(Math.max(0, yDomain[0]));
 
@@ -1151,6 +1229,11 @@ function renderMultiLineChart(instance, mode) {
         append(markGroup, circle);
       });
     }
+
+    if (labels) {
+      points.forEach((point) =>
+        drawDataLabel(svg, point.x, point.y - 8, point.yValue, labels, theme));
+    }
   });
 
   if (options.legend !== false) {
@@ -1199,6 +1282,8 @@ function renderScatterChart(instance) {
     categoricalX: xInfo.type === 'point'
   });
 
+  drawAnnotations(svg, options, plot, xInfo.scale, yScale, theme);
+  const labels = dataLabelConfig(options);
   const markGroup = append(svg, svgEl('g', { class: 'vd-chart-marks vd-chart-scatter' }));
   rows.forEach((row) => {
     const cx = xInfo.scale(xInfo.mapValue(row.x));
@@ -1220,6 +1305,7 @@ function renderScatterChart(instance) {
       datum: row.raw, x: row.x, y: row.y, value: row.y, index: row.index
     }, `${formatCategory(row.x)}: ${formatNumber(row.y)}`);
     attachClick(circle, options.onPointClick, row.raw, row.index);
+    if (labels) drawDataLabel(svg, cx, cy - 8, row.y, labels, theme);
     append(markGroup, circle);
   });
 
@@ -1277,6 +1363,7 @@ function renderDonutChart(instance) {
   const ratio = Math.max(0, Math.min(0.9, Number(options.innerRadiusRatio ?? 0.62)));
   const innerRadius = outerRadius * ratio;
   const colorScale = scaleOrdinal({ domain: rows.map((row) => row.label), range: theme.colors });
+  const labels = dataLabelConfig(options);
   const markGroup = append(svg, svgEl('g', { class: 'vd-chart-marks vd-chart-slices' }));
   let cursor = -Math.PI / 2;
 
@@ -1299,6 +1386,11 @@ function renderDonutChart(instance) {
       datum: row.raw, label: row.label, value: row.value, y: row.value, index: row.index
     }, `${formatCategory(row.label)}: ${formatNumber(row.value)}`);
     attachClick(path, options.onSliceClick, row.raw, row.index);
+    if (labels) {
+      const mid = (start + end) / 2;
+      const point = polarPoint(cx, cy, (innerRadius + outerRadius) / 2, mid);
+      drawDataLabel(svg, point.x, point.y, row.value, labels, theme);
+    }
     append(markGroup, path);
   });
 

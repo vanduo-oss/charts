@@ -1,6 +1,6 @@
 {
   "name": "@vanduo-oss/charts",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Standalone SVG-first chart components for Vanduo dashboards and docs",
   "type": "module",
   "main": "./dist/index.cjs",

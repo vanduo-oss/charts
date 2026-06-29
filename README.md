@@ -117,6 +117,8 @@ Per-kind components are also exported so you can drop the `type` prop: `VdBarCha
 | `color` | `string \| (row) => string` | — | CSS color, a category-field name (distinct values → palette), or a per-datum function. |
 | `series` | `Array<{ name, y?, data?, color? }>` | — | Multi-series: bar → grouped, line/area → one path each. |
 | `legend` | `boolean \| { position }` | — | Multi-series charts show one by default; pass `false` to hide. |
+| `dataLabels` | `boolean \| { format, color }` | — | Draw the value on each mark. |
+| `annotations` | `Array<{ y?, x?, label?, color?, dash? }>` | — | Reference lines across the plot. |
 | `xMin`, `xMax`, `yMin`, `yMax` | `number` | — | Pin axis bounds (else auto-scaled to the data). |
 | `yTickCount` | `number` | `5` | Target number of y-axis ticks. |
 | `theme` | `Record<string, unknown>` | — | Token overrides (see **Theme**). |

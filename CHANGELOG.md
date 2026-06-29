@@ -2,6 +2,15 @@
 
 All notable changes to `@vanduo-oss/charts` are documented here.
 
+## [0.2.0] — 2026-06-29
+
+Additive feature release.
+
+### Added
+
+- **Data labels** — `dataLabels: boolean | { format?, color? }` renders the value on each bar, point, and pie/donut slice.
+- **Reference-line annotations** — `annotations: Array<{ y?, x?, label?, color?, dash? }>` draws horizontal (`y`) and vertical (`x`, numeric or category) reference lines across cartesian charts. New `Annotation` and `DataLabelsOption` types are exported (main entry + `./vue`).
+
 ## [0.1.1] — 2026-06-29
 
 Additive feature release. All new options are backward-compatible.

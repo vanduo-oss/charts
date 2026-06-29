@@ -1,12 +1,22 @@
 import type { DefineComponent } from 'vue';
 import type {
+  Annotation,
   ColorOption,
+  DataLabelsOption,
   LegendOptions,
   Series,
   TooltipOption,
 } from './index';
 
-export type { TooltipContext, TooltipOption, Series, ColorOption, LegendOptions } from './index';
+export type {
+  TooltipContext,
+  TooltipOption,
+  Series,
+  ColorOption,
+  LegendOptions,
+  DataLabelsOption,
+  Annotation,
+} from './index';
 
 export type VdChartType = 'bar' | 'line' | 'area' | 'scatter' | 'donut' | 'pie';
 
@@ -46,6 +56,10 @@ export interface VdChartProps {
   series?: Series[];
   /** Show a legend; multi-series charts show one by default. */
   legend?: boolean | LegendOptions;
+  /** Draw value labels on each mark. */
+  dataLabels?: boolean | DataLabelsOption;
+  /** Reference lines drawn across the plot. */
+  annotations?: Annotation[];
   /** Pin axis bounds (otherwise auto-scaled to the data). */
   xMin?: number;
   xMax?: number;

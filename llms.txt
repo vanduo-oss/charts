@@ -1,4 +1,4 @@
-# @vanduo-oss/charts v0.1.1 — LLM Context
+# @vanduo-oss/charts v0.2.0 — LLM Context
 
 You are an expert on **@vanduo-oss/charts**, the **standalone SVG-first chart
 components** of the Vanduo design system. Data in, accessible SVG out. It is
@@ -35,6 +35,10 @@ pnpm add @vanduo-oss/charts
 | `./iife` | `dist/vanduo-charts.iife.js` | browser global `window.VanduoCharts` |
 
 > Both the main entry and the `./vue` subpath ship `.d.ts` (typed since 0.1.1).
+
+## New in 0.2.0
+- **Data labels**: `dataLabels: boolean | { format?: (value) => string, color? }` draws the value on each bar/point/slice.
+- **Reference lines**: `annotations: [{ y?, x?, label?, color?, dash? }]` — `y` draws a horizontal line, `x` (numeric or category) a vertical one, across cartesian plots.
 
 ## New in 0.1.1 (cartesian charts)
 - **Per-datum color**: `color` accepts a CSS color string, a category-field name (distinct values → palette), or a function `(row) => cssColor`.
@@ -94,4 +98,4 @@ built-in colors apply when no tokens are present.
 `scaleOrdinal`, `resolveTheme`, `ticks`, `niceDomain`, `linePath`, `areaPath`, `arcPath`.
 
 ## Version
-`VD_CHARTS_VERSION` and `VanduoCharts.version` expose the package version (`0.1.1`).
+`VD_CHARTS_VERSION` and `VanduoCharts.version` expose the package version (`0.2.0`).
