@@ -1,0 +1,274 @@
+/**
+ * Type declarations for the @vanduo-oss/charts main entry (the framework-agnostic
+ * factory API). The `./vue` subpath has its own `vue.d.ts`.
+ */
+
+export type Row = Record<string, unknown>;
+
+/** A field name (supports dotted paths) or an extractor function. */
+export type Accessor<T = Row, R = unknown> = string | ((row: T) => R);
+
+/**
+ * Color option:
+ *  - a CSS color string applied to every mark, OR a field name whose distinct
+ *    values map to the theme's ordinal palette;
+ *  - a function returning a CSS color per datum (e.g. `(row) => '#40c057'`).
+ */
+export type ColorOption<T = Row> = string | ((row: T) => string);
+
+export interface ChartTheme {
+  fontFamily: string;
+  textColor: string;
+  mutedTextColor: string;
+  gridColor: string;
+  axisColor: string;
+  backgroundColor: string;
+  colors: string[];
+}
+
+export interface AxisOptions {
+  label?: string;
+}
+
+/** Context object passed to a function `tooltip`. */
+export interface TooltipContext<T = Row> {
+  datum: T;
+  x?: unknown;
+  y?: number;
+  /** Numeric value of the mark (y for cartesian, slice value for pie/donut). */
+  value?: number;
+  /** Category label (bar x, pie/donut slice label). */
+  label?: unknown;
+  index?: number;
+  /** Present for multi-series charts. */
+  seriesIndex?: number;
+  seriesName?: string;
+}
+
+export type TooltipOption<T = Row> =
+  | string
+  | false
+  | ((datum: T, context: TooltipContext<T>) => string | false);
+
+/** One series in a multi-series cartesian chart (bar / line / area). */
+export interface Series<T = Row> {
+  name: string;
+  /** y accessor for this series (falls back to the chart-level `y`). */
+  y?: Accessor<T, number>;
+  /** Per-series data (falls back to the chart-level `data`). */
+  data?: T[];
+  /** Explicit color; defaults to the next theme palette slot. */
+  color?: string;
+}
+
+export interface LegendOptions {
+  position?: 'top' | 'right';
+}
+
+export interface ClickEvent<T = Row> {
+  event: Event;
+  datum: T;
+  index: number;
+}
+
+export interface BaseChartOptions<T = Row> {
+  /** Element or CSS selector to render into. */
+  target: string | Element;
+  data?: T[];
+  title?: string;
+  description?: string;
+  ariaLabel?: string;
+  width?: number;
+  height?: number;
+  margin?: number | { top?: number; right?: number; bottom?: number; left?: number };
+  theme?: Partial<ChartTheme>;
+  tooltip?: TooltipOption<T>;
+  /** Re-render on container resize (default true). */
+  responsive?: boolean;
+  /** Show a legend. Multi-series charts show one by default; pass `false` to hide. */
+  legend?: boolean | LegendOptions;
+}
+
+export interface CartesianChartOptions<T = Row> extends BaseChartOptions<T> {
+  x?: Accessor<T>;
+  y?: Accessor<T, number>;
+  color?: ColorOption<T>;
+  xScale?: 'linear' | 'time' | 'point';
+  xFormat?: (value: unknown) => string;
+  yFormat?: (value: number) => string;
+  xAxis?: AxisOptions;
+  yAxis?: AxisOptions;
+  /** Pin axis bounds (otherwise auto-scaled to the data). */
+  xMin?: number;
+  xMax?: number;
+  yMin?: number;
+  yMax?: number;
+  /** Target number of y ticks (default 5). */
+  yTickCount?: number;
+  /** Force 0 into the y domain. */
+  yIncludeZero?: boolean;
+  /** Multiple series (bar → grouped, line/area → one path each). */
+  series?: Series<T>[];
+  onPointClick?: (e: ClickEvent<T>) => void;
+}
+
+export interface BarChartOptions<T = Row> extends CartesianChartOptions<T> {
+  /** Band padding between bars/groups (default 0.18). */
+  barPadding?: number;
+  onBarClick?: (e: ClickEvent<T>) => void;
+}
+
+export interface LineChartOptions<T = Row> extends CartesianChartOptions<T> {
+  stroke?: string;
+  strokeWidth?: number;
+  points?: boolean;
+  pointRadius?: number;
+  pointFill?: string;
+}
+
+export interface AreaChartOptions<T = Row> extends LineChartOptions<T> {
+  fill?: string;
+  fillOpacity?: number;
+}
+
+export interface ScatterChartOptions<T = Row> extends CartesianChartOptions<T> {
+  pointRadius?: number;
+  pointOpacity?: number;
+}
+
+export interface PieChartOptions<T = Row> extends BaseChartOptions<T> {
+  label?: Accessor<T>;
+  value?: Accessor<T, number>;
+  innerRadiusRatio?: number;
+  centerLabel?: string | false;
+  centerSubLabel?: string;
+  onSliceClick?: (e: ClickEvent<T>) => void;
+}
+
+export interface ChartInstance {
+  kind: string;
+  options: Record<string, unknown>;
+  target: Element;
+  render(): ChartInstance;
+  update(options?: Record<string, unknown>): ChartInstance;
+  resize(): ChartInstance;
+  destroy(): void;
+  showTooltip(content: string, event?: Event): void;
+  hideTooltip(): void;
+}
+
+export function BarChart<T = Row>(options: BarChartOptions<T>): ChartInstance;
+export function LineChart<T = Row>(options: LineChartOptions<T>): ChartInstance;
+export function AreaChart<T = Row>(options: AreaChartOptions<T>): ChartInstance;
+export function ScatterChart<T = Row>(options: ScatterChartOptions<T>): ChartInstance;
+export function DonutChart<T = Row>(options: PieChartOptions<T>): ChartInstance;
+export function PieChart<T = Row>(options: PieChartOptions<T>): ChartInstance;
+
+// --- scales & helpers ---
+
+export interface LinearScale {
+  (value: number): number | null;
+  domain(): [number, number];
+  range(): [number, number];
+  ticks(count?: number): number[];
+}
+
+export interface BandScale {
+  (value: unknown): number | null;
+  domain(): string[];
+  range(): [number, number];
+  bandwidth(): number;
+  step(): number;
+}
+
+export interface PointScale {
+  (value: unknown): number | null;
+  domain(): string[];
+  range(): [number, number];
+  bandwidth(): number;
+  step(): number;
+}
+
+export interface TimeScale {
+  (value: unknown): number | null;
+  domain(): Date[];
+  range(): [number, number];
+  ticks(count?: number): Date[];
+}
+
+export type OrdinalScale = ((value: unknown) => string) & {
+  domain(): string[];
+  range(): string[];
+};
+
+export function scaleLinear(config?: { domain?: [number, number]; range?: [number, number] }): LinearScale;
+export function scaleTime(config?: { domain?: unknown[]; range?: [number, number] }): TimeScale;
+export function scaleBand(config?: {
+  domain?: unknown[];
+  range?: [number, number];
+  padding?: number;
+  paddingInner?: number;
+  paddingOuter?: number;
+}): BandScale;
+export function scalePoint(config?: { domain?: unknown[]; range?: [number, number]; padding?: number }): PointScale;
+export function scaleOrdinal(config?: { domain?: unknown[]; range?: string[] }): OrdinalScale;
+
+export function createAccessor<T = Row, R = unknown>(
+  accessor: Accessor<T, R> | undefined,
+  fallback?: Accessor<T, R>,
+): (row: T) => R;
+
+export function resolveTheme(target: Element | null, overrides?: Partial<ChartTheme>): ChartTheme;
+
+export function ticks(min: number, max: number, count?: number): number[];
+
+/**
+ * Compute a "nice" [min, max] domain. Pass a boolean for the legacy
+ * `includeZero` shorthand, or an options object; an explicit `min`/`max`
+ * pins that bound exactly.
+ */
+export function niceDomain(
+  values: unknown[],
+  options?: boolean | { includeZero?: boolean; min?: number; max?: number; tickCount?: number },
+): [number, number];
+
+export function linePath(points: Array<{ x: number; y: number }>): string;
+export function areaPath(points: Array<{ x: number; y: number }>, baselineY: number): string;
+export function arcPath(
+  cx: number,
+  cy: number,
+  outerRadius: number,
+  innerRadius: number,
+  startAngle: number,
+  endAngle: number,
+): string;
+
+export const VD_CHARTS_VERSION: string;
+
+export const instances: Map<Element, ChartInstance>;
+export function init(root?: Element | Document): void;
+export function destroy(el: Element): void;
+export function destroyAll(root?: Element | Document): void;
+export function reinit(root?: Element | Document): void;
+
+export const VanduoCharts: {
+  version: string;
+  instances: Map<Element, ChartInstance>;
+  init: typeof init;
+  destroy: typeof destroy;
+  destroyAll: typeof destroyAll;
+  reinit: typeof reinit;
+  BarChart: typeof BarChart;
+  LineChart: typeof LineChart;
+  AreaChart: typeof AreaChart;
+  ScatterChart: typeof ScatterChart;
+  PieChart: typeof PieChart;
+  DonutChart: typeof DonutChart;
+  createAccessor: typeof createAccessor;
+  scaleLinear: typeof scaleLinear;
+  scaleBand: typeof scaleBand;
+  scalePoint: typeof scalePoint;
+  scaleTime: typeof scaleTime;
+  scaleOrdinal: typeof scaleOrdinal;
+  resolveTheme: typeof resolveTheme;
+};

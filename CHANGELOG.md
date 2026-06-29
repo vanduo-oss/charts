@@ -2,6 +2,23 @@
 
 All notable changes to `@vanduo-oss/charts` are documented here.
 
+## [0.1.1] — 2026-06-29
+
+Additive feature release. All new options are backward-compatible.
+
+### Added
+
+- **Main-entry types** — the `.` export now ships `dist/index.d.ts` (the factory API: `BarChart`/`LineChart`/`AreaChart`/`ScatterChart`/`DonutChart`/`PieChart`, scales, path helpers, `niceDomain`, `TooltipContext`, `Series`, etc.). Previously only `./vue` was typed.
+- **Per-datum / per-series color** — `color` now accepts a function `(row) => cssColor` (in addition to a CSS color string or a category-field name).
+- **Multi-series** — `series: Array<{ name, y?, data?, color? }>` for bar (grouped bars via an inner band scale), line, and area (one path per series). Series share the chart `data` with their own `y`, or carry their own `data`.
+- **Legend** — `legend: boolean | { position }`. Multi-series charts render a legend by default; single-series charts show one when `color` is a category field and `legend` is truthy.
+- **Axis range & ticks** — `yMin` / `yMax` / `xMin` / `xMax` pin the scale bounds (otherwise auto-scaled), and `yTickCount` sets the target y tick count.
+- **Typed tooltip context** — a function `tooltip` now receives `(datum, context)`, where `context` is a typed `TooltipContext` (`{ datum, x?, y?, value?, label?, index?, seriesIndex?, seriesName? }`). Backward-compatible: the raw datum is still the first argument.
+
+### Changed
+
+- `niceDomain(values, options)` accepts an options object `{ includeZero?, min?, max?, tickCount? }`; the legacy boolean `includeZero` shorthand still works.
+
 ## [0.1.0] — 2026-06-27
 
 ### Added

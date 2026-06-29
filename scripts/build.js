@@ -45,6 +45,10 @@ async function build() {
     resolve(distDir, 'vanduo-charts.css')
   );
   copyFileSync(
+    resolve(rootDir, 'src', 'index.d.ts'),
+    resolve(distDir, 'index.d.ts')
+  );
+  copyFileSync(
     resolve(rootDir, 'src', 'vue.d.ts'),
     resolve(distDir, 'vue.d.ts')
   );

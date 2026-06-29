@@ -16,7 +16,7 @@ const DEFAULT_COLORS = [
   '#fd7e14'
 ];
 
-export const VD_CHARTS_VERSION = '0.0.1';
+export const VD_CHARTS_VERSION = '0.1.1';
 
 let chartId = 0;
 
@@ -268,16 +268,31 @@ export function ticks(min, max, count = 5) {
   return reverse ? values.reverse() : values;
 }
 
-export function niceDomain(values, includeZero = false) {
+/**
+ * Compute a "nice" [min, max] domain.
+ * @param {Array} values
+ * @param {boolean | { includeZero?: boolean, min?: number, max?: number, tickCount?: number }} [options]
+ *   Pass a boolean for the legacy `includeZero` shorthand, or an options object.
+ *   An explicit `min`/`max` pins that bound exactly (no nice-rounding).
+ */
+export function niceDomain(values, options = false) {
+  const opts = typeof options === 'boolean' ? { includeZero: options } : (options || {});
   const nums = values.map(toNumber).filter(isFiniteNumber);
-  if (!nums.length) return [0, 1];
+  if (!nums.length) {
+    return [
+      isFiniteNumber(opts.min) ? opts.min : 0,
+      isFiniteNumber(opts.max) ? opts.max : 1
+    ];
+  }
   let min = Math.min(...nums);
   let max = Math.max(...nums);
 
-  if (includeZero) {
+  if (opts.includeZero) {
     min = Math.min(0, min);
     max = Math.max(0, max);
   }
+  if (isFiniteNumber(opts.min)) min = opts.min;
+  if (isFiniteNumber(opts.max)) max = opts.max;
 
   if (min === max) {
     const pad = Math.abs(min || 1) * 0.1;
@@ -285,10 +300,10 @@ export function niceDomain(values, includeZero = false) {
     max += pad;
   }
 
-  const step = tickStep(min, max, 5);
+  const step = tickStep(min, max, opts.tickCount || 5);
   return [
-    Math.floor(min / step) * step,
-    Math.ceil(max / step) * step
+    isFiniteNumber(opts.min) ? opts.min : Math.floor(min / step) * step,
+    isFiniteNumber(opts.max) ? opts.max : Math.ceil(max / step) * step
   ];
 }
 
@@ -462,12 +477,17 @@ function formatCategory(value) {
   return value == null ? '' : String(value);
 }
 
-function attachTooltip(instance, mark, options, datum, fallback) {
+function attachTooltip(instance, mark, options, context, fallback) {
   const tooltip = options.tooltip;
   if (tooltip === false) return;
 
   const getContent = () => {
-    if (typeof tooltip === 'function') return tooltip(datum);
+    if (typeof tooltip === 'function') {
+      // Backward-compatible: the raw datum is the first arg (as before); the
+      // typed context (x/y/value/label/index/seriesIndex/seriesName) is second.
+      const result = tooltip(context.datum, context);
+      return result === false ? null : result;
+    }
     if (typeof tooltip === 'string') return tooltip;
     return fallback;
   };
@@ -675,7 +695,7 @@ function inferXScale(rows, plot, options) {
 
   if (explicitType === 'linear' || (!explicitType && allNumeric)) {
     const nums = values.map(toNumber).filter(isFiniteNumber);
-    const domain = niceDomain(nums, false);
+    const domain = niceDomain(nums, { min: options.xMin, max: options.xMax });
     const scale = scaleLinear({ domain, range: [plot.left, plot.right] });
     return {
       scale,
@@ -696,9 +716,14 @@ function inferXScale(rows, plot, options) {
   };
 }
 
-function getColorScale(rows, accessor, theme) {
-  if (!accessor) return null;
-  const colorAccessor = createAccessor(accessor);
+function getColorScale(rows, colorOption, theme) {
+  if (colorOption == null) return null;
+  // A function returns a CSS color per datum directly (e.g. (row) => '#40c057').
+  if (typeof colorOption === 'function') {
+    return { direct: colorOption };
+  }
+  // A string names a category field → ordinal palette (legacy behavior).
+  const colorAccessor = createAccessor(colorOption);
   const domain = unique(rows.map((row) => colorAccessor(row.raw))).map(String);
   return {
     accessor: colorAccessor,
@@ -706,7 +731,89 @@ function getColorScale(rows, accessor, theme) {
   };
 }
 
+function colorForRow(color, row, theme) {
+  if (color) {
+    if (typeof color.direct === 'function') return color.direct(row.raw);
+    if (color.scale) return color.scale(color.accessor(row.raw));
+  }
+  return theme.colors[row.index % theme.colors.length];
+}
+
+/**
+ * Normalize `options.series` (or the implicit single series) into a list of
+ * `{ name, color, seriesIndex, rows }`. Series may share `options.data` with
+ * their own `y` accessor, or carry their own `data`.
+ */
+function buildSeriesList(options) {
+  const xAccessor = createAccessor(options.x, 'x');
+  const sharedData = toArray(options.data);
+  const buildRows = (data, yAccessor) => data.map((datum, index) => ({
+    raw: datum,
+    index,
+    x: xAccessor(datum),
+    y: toNumber(yAccessor(datum))
+  })).filter((row) => row.x != null && isFiniteNumber(row.y));
+
+  if (Array.isArray(options.series) && options.series.length) {
+    return options.series.map((series, seriesIndex) => {
+      const data = Array.isArray(series.data) && series.data.length ? series.data : sharedData;
+      const yAccessor = createAccessor(series.y ?? options.y, 'y');
+      return {
+        name: series.name ?? `Series ${seriesIndex + 1}`,
+        color: series.color,
+        seriesIndex,
+        rows: buildRows(data, yAccessor)
+      };
+    });
+  }
+
+  return [{
+    name: options.name ?? null,
+    color: options.stroke,
+    seriesIndex: 0,
+    rows: buildRows(sharedData, createAccessor(options.y, 'y'))
+  }];
+}
+
+function seriesColor(series, theme) {
+  return series.color || theme.colors[series.seriesIndex % theme.colors.length];
+}
+
+/**
+ * Horizontal legend along the top-right of the plot. Items: `{ label, color }`.
+ * Widths are estimated (no DOM text measurement available), which is fine for
+ * the short series/category labels legends carry.
+ */
+function renderTopLegend(svg, items, theme, plot) {
+  if (!items.length) return;
+  const shown = items.slice(0, 8);
+  const widths = shown.map((item) => 14 + String(item.label).length * 6.5 + 14);
+  const total = widths.reduce((sum, w) => sum + w, 0);
+  let x = Math.max(plot.left, plot.right - total);
+  const y = 14;
+  const legend = append(svg, svgEl('g', { class: 'vd-chart-legend' }));
+  shown.forEach((item, index) => {
+    append(legend, svgEl('rect', {
+      x,
+      y: y - 8,
+      width: 10,
+      height: 10,
+      rx: 2,
+      fill: item.color
+    }));
+    append(legend, setText(svgEl('text', {
+      x: x + 14,
+      y,
+      fill: theme.mutedTextColor,
+      'font-size': 11
+    }), formatCategory(item.label)));
+    x += widths[index];
+  });
+}
+
 function renderBarChart(instance) {
+  if (instance.options.series?.length) return renderMultiBarChart(instance);
+
   const shell = createSvgShell(instance);
   const { svg, size, theme, plot } = shell;
   const options = instance.options;
@@ -731,9 +838,14 @@ function renderBarChart(instance) {
     range: [plot.left, plot.right],
     padding: options.barPadding ?? 0.18
   });
-  const yDomain = niceDomain(rows.map((row) => row.y), true);
+  const yDomain = niceDomain(rows.map((row) => row.y), {
+    includeZero: true,
+    min: options.yMin,
+    max: options.yMax,
+    tickCount: options.yTickCount
+  });
   const yScale = scaleLinear({ domain: yDomain, range: [plot.bottom, plot.top] });
-  const yTicks = yScale.ticks(5);
+  const yTicks = yScale.ticks(options.yTickCount ?? 5);
   const color = getColorScale(rows, options.color, theme);
 
   drawCartesianAxes(svg, {
@@ -755,7 +867,7 @@ function renderBarChart(instance) {
     if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFiniteNumber(baseline)) return;
     const rectY = Math.min(y, baseline);
     const rectHeight = Math.max(1, Math.abs(baseline - y));
-    const fill = color ? color.scale(color.accessor(row.raw)) : theme.colors[row.index % theme.colors.length];
+    const fill = colorForRow(color, row, theme);
     const rect = svgEl('rect', {
       class: 'vd-chart-bar',
       x,
@@ -768,13 +880,94 @@ function renderBarChart(instance) {
       'aria-label': `${formatCategory(row.x)}: ${formatNumber(row.y)}`
     });
     makeInteractive(rect, typeof options.onBarClick === 'function', options.tooltip !== false);
-    attachTooltip(instance, rect, options, row.raw, `${formatCategory(row.x)}: ${formatNumber(row.y)}`);
+    attachTooltip(instance, rect, options, {
+      datum: row.raw, x: row.x, y: row.y, value: row.y, label: row.x, index: row.index
+    }, `${formatCategory(row.x)}: ${formatNumber(row.y)}`);
     attachClick(rect, options.onBarClick, row.raw, row.index);
     append(markGroup, rect);
   });
+
+  if (options.legend && color && color.scale) {
+    renderTopLegend(svg, color.scale.domain().map((cat) => ({ label: cat, color: color.scale(cat) })), theme, plot);
+  }
+}
+
+function renderMultiBarChart(instance) {
+  const shell = createSvgShell(instance);
+  const { svg, size, theme, plot } = shell;
+  const options = instance.options;
+  const seriesList = buildSeriesList(options);
+  const allRows = seriesList.flatMap((series) => series.rows);
+
+  if (!allRows.length) {
+    renderEmpty(svg, size, theme);
+    return;
+  }
+
+  const categories = unique(allRows.map((row) => String(row.x)));
+  const xScale = scaleBand({
+    domain: categories,
+    range: [plot.left, plot.right],
+    padding: options.barPadding ?? 0.18
+  });
+  const innerScale = scaleBand({
+    domain: seriesList.map((series) => series.name),
+    range: [0, xScale.bandwidth()],
+    padding: 0.08
+  });
+  const yDomain = niceDomain(allRows.map((row) => row.y), {
+    includeZero: true,
+    min: options.yMin,
+    max: options.yMax,
+    tickCount: options.yTickCount
+  });
+  const yScale = scaleLinear({ domain: yDomain, range: [plot.bottom, plot.top] });
+  const yTicks = yScale.ticks(options.yTickCount ?? 5);
+
+  drawCartesianAxes(svg, {
+    plot, xScale, yScale, xTicks: categories, yTicks, theme, options, categoricalX: true
+  });
+
+  const markGroup = append(svg, svgEl('g', { class: 'vd-chart-marks vd-chart-bars' }));
+  const baseline = yScale(0);
+  seriesList.forEach((series) => {
+    const fill = seriesColor(series, theme);
+    series.rows.forEach((row) => {
+      const groupX = xScale(String(row.x));
+      const offset = innerScale(series.name);
+      const y = yScale(row.y);
+      if (![groupX, offset, y, baseline].every(isFiniteNumber)) return;
+      const rectY = Math.min(y, baseline);
+      const rectHeight = Math.max(1, Math.abs(baseline - y));
+      const rect = svgEl('rect', {
+        class: 'vd-chart-bar',
+        x: groupX + offset,
+        y: rectY,
+        width: innerScale.bandwidth(),
+        height: rectHeight,
+        rx: 3,
+        fill,
+        role: 'graphics-symbol',
+        'aria-label': `${series.name} — ${formatCategory(row.x)}: ${formatNumber(row.y)}`
+      });
+      makeInteractive(rect, typeof options.onBarClick === 'function', options.tooltip !== false);
+      attachTooltip(instance, rect, options, {
+        datum: row.raw, x: row.x, y: row.y, value: row.y, label: row.x,
+        index: row.index, seriesIndex: series.seriesIndex, seriesName: series.name
+      }, `${series.name} — ${formatCategory(row.x)}: ${formatNumber(row.y)}`);
+      attachClick(rect, options.onBarClick, row.raw, row.index);
+      append(markGroup, rect);
+    });
+  });
+
+  if (options.legend !== false) {
+    renderTopLegend(svg, seriesList.map((series) => ({ label: series.name, color: seriesColor(series, theme) })), theme, plot);
+  }
 }
 
 function renderLineLikeChart(instance, mode) {
+  if (instance.options.series?.length) return renderMultiLineChart(instance, mode);
+
   const shell = createSvgShell(instance);
   const { svg, size, theme, plot } = shell;
   const options = instance.options;
@@ -794,9 +987,14 @@ function renderLineLikeChart(instance, mode) {
   }
 
   const xInfo = inferXScale(rows, plot, options);
-  const yDomain = niceDomain(rows.map((row) => row.y), mode === 'area' || options.yIncludeZero === true);
+  const yDomain = niceDomain(rows.map((row) => row.y), {
+    includeZero: mode === 'area' || options.yIncludeZero === true,
+    min: options.yMin,
+    max: options.yMax,
+    tickCount: options.yTickCount
+  });
   const yScale = scaleLinear({ domain: yDomain, range: [plot.bottom, plot.top] });
-  const yTicks = yScale.ticks(5);
+  const yTicks = yScale.ticks(options.yTickCount ?? 5);
   const color = options.stroke || theme.colors[0];
   const points = rows.map((row) => ({
     raw: row.raw,
@@ -855,10 +1053,108 @@ function renderLineLikeChart(instance, mode) {
         'aria-label': `${formatCategory(point.xValue)}: ${formatNumber(point.yValue)}`
       });
       makeInteractive(circle, typeof options.onPointClick === 'function', options.tooltip !== false);
-      attachTooltip(instance, circle, options, point.raw, `${formatCategory(point.xValue)}: ${formatNumber(point.yValue)}`);
+      attachTooltip(instance, circle, options, {
+        datum: point.raw, x: point.xValue, y: point.yValue, value: point.yValue, index: point.index
+      }, `${formatCategory(point.xValue)}: ${formatNumber(point.yValue)}`);
       attachClick(circle, options.onPointClick, point.raw, point.index);
       append(markGroup, circle);
     });
+  }
+}
+
+function renderMultiLineChart(instance, mode) {
+  const shell = createSvgShell(instance);
+  const { svg, size, theme, plot } = shell;
+  const options = instance.options;
+  const seriesList = buildSeriesList(options);
+  const allRows = seriesList.flatMap((series) => series.rows);
+
+  if (!allRows.length) {
+    renderEmpty(svg, size, theme);
+    return;
+  }
+
+  const xInfo = inferXScale(allRows, plot, options);
+  const yDomain = niceDomain(allRows.map((row) => row.y), {
+    includeZero: mode === 'area' || options.yIncludeZero === true,
+    min: options.yMin,
+    max: options.yMax,
+    tickCount: options.yTickCount
+  });
+  const yScale = scaleLinear({ domain: yDomain, range: [plot.bottom, plot.top] });
+  const yTicks = yScale.ticks(options.yTickCount ?? 5);
+
+  drawCartesianAxes(svg, {
+    plot,
+    xScale: xInfo.scale,
+    yScale,
+    xTicks: xInfo.ticks,
+    yTicks,
+    theme,
+    options,
+    categoricalX: xInfo.type === 'point'
+  });
+
+  const markGroup = append(svg, svgEl('g', { class: `vd-chart-marks vd-chart-${mode}` }));
+  const baseline = yScale(Math.max(0, yDomain[0]));
+
+  seriesList.forEach((series) => {
+    const stroke = seriesColor(series, theme);
+    const points = series.rows.map((row) => ({
+      raw: row.raw,
+      index: row.index,
+      xValue: row.x,
+      yValue: row.y,
+      x: xInfo.scale(xInfo.mapValue(row.x)),
+      y: yScale(row.y)
+    })).filter((point) => isFiniteNumber(point.x) && isFiniteNumber(point.y));
+
+    if (mode === 'area') {
+      append(markGroup, svgEl('path', {
+        class: 'vd-chart-area-path',
+        d: areaPath(points, baseline),
+        fill: series.color || stroke,
+        opacity: options.fillOpacity ?? 0.18,
+        stroke: 'none'
+      }));
+    }
+
+    append(markGroup, svgEl('path', {
+      class: 'vd-chart-line-path',
+      d: linePath(points),
+      fill: 'none',
+      stroke,
+      'stroke-width': options.strokeWidth || 2,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round'
+    }));
+
+    if (options.points !== false) {
+      points.forEach((point) => {
+        const circle = svgEl('circle', {
+          class: 'vd-chart-point',
+          cx: point.x,
+          cy: point.y,
+          r: options.pointRadius || 3.5,
+          fill: options.pointFill || theme.backgroundColor,
+          stroke,
+          'stroke-width': 2,
+          role: 'graphics-symbol',
+          'aria-label': `${series.name} ${formatCategory(point.xValue)}: ${formatNumber(point.yValue)}`
+        });
+        makeInteractive(circle, typeof options.onPointClick === 'function', options.tooltip !== false);
+        attachTooltip(instance, circle, options, {
+          datum: point.raw, x: point.xValue, y: point.yValue, value: point.yValue,
+          index: point.index, seriesIndex: series.seriesIndex, seriesName: series.name
+        }, `${series.name} — ${formatCategory(point.xValue)}: ${formatNumber(point.yValue)}`);
+        attachClick(circle, options.onPointClick, point.raw, point.index);
+        append(markGroup, circle);
+      });
+    }
+  });
+
+  if (options.legend !== false) {
+    renderTopLegend(svg, seriesList.map((series) => ({ label: series.name, color: seriesColor(series, theme) })), theme, plot);
   }
 }
 
@@ -882,9 +1178,14 @@ function renderScatterChart(instance) {
   }
 
   const xInfo = inferXScale(rows, plot, options);
-  const yDomain = niceDomain(rows.map((row) => row.y), options.yIncludeZero === true);
+  const yDomain = niceDomain(rows.map((row) => row.y), {
+    includeZero: options.yIncludeZero === true,
+    min: options.yMin,
+    max: options.yMax,
+    tickCount: options.yTickCount
+  });
   const yScale = scaleLinear({ domain: yDomain, range: [plot.bottom, plot.top] });
-  const yTicks = yScale.ticks(5);
+  const yTicks = yScale.ticks(options.yTickCount ?? 5);
   const color = getColorScale(rows, options.color, theme);
 
   drawCartesianAxes(svg, {
@@ -903,7 +1204,7 @@ function renderScatterChart(instance) {
     const cx = xInfo.scale(xInfo.mapValue(row.x));
     const cy = yScale(row.y);
     if (!isFiniteNumber(cx) || !isFiniteNumber(cy)) return;
-    const fill = color ? color.scale(color.accessor(row.raw)) : theme.colors[row.index % theme.colors.length];
+    const fill = colorForRow(color, row, theme);
     const circle = svgEl('circle', {
       class: 'vd-chart-scatter-point',
       cx,
@@ -915,10 +1216,16 @@ function renderScatterChart(instance) {
       'aria-label': `${formatCategory(row.x)}: ${formatNumber(row.y)}`
     });
     makeInteractive(circle, typeof options.onPointClick === 'function', options.tooltip !== false);
-    attachTooltip(instance, circle, options, row.raw, `${formatCategory(row.x)}: ${formatNumber(row.y)}`);
+    attachTooltip(instance, circle, options, {
+      datum: row.raw, x: row.x, y: row.y, value: row.y, index: row.index
+    }, `${formatCategory(row.x)}: ${formatNumber(row.y)}`);
     attachClick(circle, options.onPointClick, row.raw, row.index);
     append(markGroup, circle);
   });
+
+  if (options.legend && color && color.scale) {
+    renderTopLegend(svg, color.scale.domain().map((cat) => ({ label: cat, color: color.scale(cat) })), theme, plot);
+  }
 }
 
 function renderLegend(svg, rows, colorScale, theme, x, y) {
@@ -988,7 +1295,9 @@ function renderDonutChart(instance) {
       'aria-label': `${formatCategory(row.label)}: ${formatNumber(row.value)}`
     });
     makeInteractive(path, typeof options.onSliceClick === 'function', options.tooltip !== false);
-    attachTooltip(instance, path, options, row.raw, `${formatCategory(row.label)}: ${formatNumber(row.value)}`);
+    attachTooltip(instance, path, options, {
+      datum: row.raw, label: row.label, value: row.value, y: row.value, index: row.index
+    }, `${formatCategory(row.label)}: ${formatNumber(row.value)}`);
     attachClick(path, options.onSliceClick, row.raw, row.index);
     append(markGroup, path);
   });

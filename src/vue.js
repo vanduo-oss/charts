@@ -34,7 +34,8 @@ const CHART_PROPS = {
   y: { type: [String, Function], default: undefined },
   label: { type: [String, Function], default: undefined },
   value: { type: [String, Function], default: undefined },
-  color: { type: String, default: undefined },
+  // CSS color, category-field name, or per-datum function `(row) => color`.
+  color: { type: [String, Function], default: undefined },
   title: { type: String, default: undefined },
   description: { type: String, default: undefined },
   width: { type: Number, default: undefined },
@@ -43,6 +44,21 @@ const CHART_PROPS = {
   theme: { type: Object, default: undefined },
   tooltip: { type: [Function, String, Boolean], default: undefined },
   responsive: { type: Boolean, default: true },
+  // Multi-series (bar → grouped, line/area → one path each).
+  series: { type: Array, default: undefined },
+  // `true` / `false` / `{ position }`.
+  legend: { type: [Boolean, Object], default: undefined },
+  // Axis range + ticks.
+  xMin: { type: Number, default: undefined },
+  xMax: { type: Number, default: undefined },
+  yMin: { type: Number, default: undefined },
+  yMax: { type: Number, default: undefined },
+  yTickCount: { type: Number, default: undefined },
+  yIncludeZero: { type: Boolean, default: undefined },
+  xFormat: { type: Function, default: undefined },
+  yFormat: { type: Function, default: undefined },
+  xAxis: { type: Object, default: undefined },
+  yAxis: { type: Object, default: undefined },
 };
 
 function optionsFrom(target, props) {
@@ -63,6 +79,18 @@ function optionsFrom(target, props) {
     theme: props.theme,
     tooltip: props.tooltip,
     responsive: props.responsive,
+    series: props.series,
+    legend: props.legend,
+    xMin: props.xMin,
+    xMax: props.xMax,
+    yMin: props.yMin,
+    yMax: props.yMax,
+    yTickCount: props.yTickCount,
+    yIncludeZero: props.yIncludeZero,
+    xFormat: props.xFormat,
+    yFormat: props.yFormat,
+    xAxis: props.xAxis,
+    yAxis: props.yAxis,
   };
 }
 
@@ -90,6 +118,9 @@ export const VdChart = defineComponent({
         props.type, props.data, props.x, props.y, props.label, props.value,
         props.color, props.title, props.description, props.width, props.height,
         props.innerRadiusRatio, props.theme, props.tooltip, props.responsive,
+        props.series, props.legend, props.xMin, props.xMax, props.yMin,
+        props.yMax, props.yTickCount, props.yIncludeZero, props.xFormat,
+        props.yFormat, props.xAxis, props.yAxis,
       ],
       () => {
         if (!instance) return;

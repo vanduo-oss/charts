@@ -1,4 +1,12 @@
 import type { DefineComponent } from 'vue';
+import type {
+  ColorOption,
+  LegendOptions,
+  Series,
+  TooltipOption,
+} from './index';
+
+export type { TooltipContext, TooltipOption, Series, ColorOption, LegendOptions } from './index';
 
 export type VdChartType = 'bar' | 'line' | 'area' | 'scatter' | 'donut' | 'pie';
 
@@ -17,7 +25,11 @@ export interface VdChartProps {
   label?: VdChartAccessor;
   /** Pie/donut value accessor. */
   value?: VdChartAccessor;
-  color?: string;
+  /**
+   * A CSS color, a category-field name (distinct values → palette), or a
+   * per-datum function `(row) => color`.
+   */
+  color?: ColorOption;
   /** Rendered into SVG accessibility metadata. */
   title?: string;
   description?: string;
@@ -27,8 +39,28 @@ export interface VdChartProps {
   /** Donut/pie inner radius ratio. */
   innerRadiusRatio?: number;
   theme?: Record<string, unknown>;
-  tooltip?: ((...args: unknown[]) => string) | string | false;
+  /** String, `false`, or a function receiving a typed `TooltipContext`. */
+  tooltip?: TooltipOption;
   responsive?: boolean;
+  /** Multiple series (bar → grouped, line/area → one path each). */
+  series?: Series[];
+  /** Show a legend; multi-series charts show one by default. */
+  legend?: boolean | LegendOptions;
+  /** Pin axis bounds (otherwise auto-scaled to the data). */
+  xMin?: number;
+  xMax?: number;
+  yMin?: number;
+  yMax?: number;
+  /** Target number of y ticks (default 5). */
+  yTickCount?: number;
+  /** Force 0 into the y domain. */
+  yIncludeZero?: boolean;
+  /** Tick formatters. */
+  xFormat?: (value: unknown) => string;
+  yFormat?: (value: number) => string;
+  /** Axis titles. */
+  xAxis?: { label?: string };
+  yAxis?: { label?: string };
 }
 
 export declare const VdChart: DefineComponent<VdChartProps>;

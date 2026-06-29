@@ -114,12 +114,34 @@ Per-kind components are also exported so you can drop the `type` prop: `VdBarCha
 | `width` | `number` | — | Fixed width; omit for responsive. |
 | `height` | `number` | `300` | Container min-height in px. |
 | `innerRadiusRatio` | `number` | — | Donut/pie inner radius ratio. |
-| `color` | `string` | — | Single-series color override. |
+| `color` | `string \| (row) => string` | — | CSS color, a category-field name (distinct values → palette), or a per-datum function. |
+| `series` | `Array<{ name, y?, data?, color? }>` | — | Multi-series: bar → grouped, line/area → one path each. |
+| `legend` | `boolean \| { position }` | — | Multi-series charts show one by default; pass `false` to hide. |
+| `xMin`, `xMax`, `yMin`, `yMax` | `number` | — | Pin axis bounds (else auto-scaled to the data). |
+| `yTickCount` | `number` | `5` | Target number of y-axis ticks. |
 | `theme` | `Record<string, unknown>` | — | Token overrides (see **Theme**). |
-| `tooltip` | `(d) => string \| string \| false` | — | Custom tooltip or disable. |
+| `tooltip` | `(datum, ctx) => string \| string \| false` | — | Custom tooltip or disable. `ctx` is the typed `TooltipContext`. |
 | `responsive` | `boolean` | `true` | Re-measure and re-render on container resize. |
 
-Types ship with the subpath (`dist/vue.d.ts`).
+Types ship for both the main entry (`dist/index.d.ts`) and the subpath (`dist/vue.d.ts`).
+
+```ts
+// Multi-series + per-datum color + pinned axis + typed tooltip
+import { BarChart, type TooltipContext } from '@vanduo-oss/charts';
+BarChart({
+  target: '#chart',
+  data: rows,
+  x: 'month',
+  series: [
+    { name: 'Resisted', y: 'resisted', color: '#40c057' },
+    { name: 'Smoked', y: 'smoked', color: '#fa5252' },
+  ],
+  yMin: 0,
+  yMax: 10,
+  legend: true,
+  tooltip: (datum, ctx: TooltipContext) => `${ctx.seriesName}: ${ctx.value}`,
+});
+```
 
 ## Theme
 

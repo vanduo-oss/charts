@@ -1,4 +1,4 @@
-# @vanduo-oss/charts v0.1.0 — LLM Context
+# @vanduo-oss/charts v0.1.1 — LLM Context
 
 You are an expert on **@vanduo-oss/charts**, the **standalone SVG-first chart
 components** of the Vanduo design system. Data in, accessible SVG out. It is
@@ -29,12 +29,19 @@ pnpm add @vanduo-oss/charts
 ## Exports
 | Export | Path | Contents |
 | --- | --- | --- |
-| `.` | `dist/index.js` + `dist/index.cjs` | chart factories, scales, path helpers, auto-init |
+| `.` | `dist/index.js` + `dist/index.cjs` (+ `dist/index.d.ts`) | chart factories, scales, path helpers, auto-init |
 | `./css` | `dist/vanduo-charts.css` | base chart/tooltip styles |
 | `./vue` | `dist/vue.js` (+ `dist/vue.d.ts`) | `VdChart` + per-kind Vue 3 components |
 | `./iife` | `dist/vanduo-charts.iife.js` | browser global `window.VanduoCharts` |
 
-> Note: the main entry currently ships **without** `.d.ts`; the `./vue` subpath **is** typed.
+> Both the main entry and the `./vue` subpath ship `.d.ts` (typed since 0.1.1).
+
+## New in 0.1.1 (cartesian charts)
+- **Per-datum color**: `color` accepts a CSS color string, a category-field name (distinct values → palette), or a function `(row) => cssColor`.
+- **Axis range**: `yMin`/`yMax`/`xMin`/`xMax` pin bounds (else auto-scaled); `yTickCount` sets the target tick count.
+- **Typed tooltip**: a function `tooltip` receives `(datum, context)` where `context: { datum, x?, y?, value?, label?, index?, seriesIndex?, seriesName? }`. Back-compatible — the datum is still the first argument.
+- **Multi-series** `series: Array<{ name, y?, data?, color? }>` for bar (grouped), line, and area (one path each). Series share `data` with their own `y`, or carry their own `data`.
+- **Legend** `legend: boolean | { position }` — multi-series charts render one by default (pass `false` to hide); single-series charts show one when `color` is a category field and `legend` is truthy.
 
 ## Chart Factories (JS)
 ```js
@@ -87,4 +94,4 @@ built-in colors apply when no tokens are present.
 `scaleOrdinal`, `resolveTheme`, `ticks`, `niceDomain`, `linePath`, `areaPath`, `arcPath`.
 
 ## Version
-`VD_CHARTS_VERSION` and `VanduoCharts.version` expose the package version.
+`VD_CHARTS_VERSION` and `VanduoCharts.version` expose the package version (`0.1.1`).
