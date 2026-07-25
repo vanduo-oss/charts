@@ -2,6 +2,10 @@
 
 All notable changes to `@vanduo-oss/charts` are documented here.
 
+## Retired — 2026-07-25
+
+The Vanduo legacy (dual-engine) line is retired. `0.2.0` is the final release of `@vanduo-oss/charts`; no further versions will be published. The package remains installable on npm. The repository is archived (read-only) and the git tag `retired-v0.2.0` marks the final state. Successor: `@vanduo-oss/vd3-cbun/charts` — see `README.md`.
+
 ## [0.2.0] — 2026-06-29
 
 Additive feature release.
