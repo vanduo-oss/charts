@@ -2,3 +2,8 @@
 onlyBuiltDependencies:
   - esbuild
   - "@playwright/test"
+
+# Retirement-time transitive dev-dep advisory pins (no consumer impact —
+# overrides apply to this repo's own install only).
+overrides:
+  postcss: ">=8.5.18"

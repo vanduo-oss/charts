@@ -26,6 +26,11 @@ In scope:
 - A `## Retired` entry in `CHANGELOG.md`.
 - A retirement note in `SKILL.md`, so an agent loading the skill sees it immediately.
 - Moving every unshipped OpenSpec change under `openspec/changes/archive/`, each marked **ABANDONED**.
+- Pinning transitive **dev**-dependency advisories (postcss) via `overrides` in
+  `pnpm-workspace.yaml`, so the final CI run and the archived state are clean. These
+  advisories were published after the last green run on `main` (2026-07-20) and are
+  unrelated to this change; overrides apply to this repo's own install only and do not
+  propagate to consumers of the published package.
 - An annotated git tag `retired-v0.2.0` pinning the final state.
 
 Out of scope:
