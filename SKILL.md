@@ -1,9 +1,15 @@
 ---
 name: vanduo-charts
-description: Use when adding charts with @vanduo-oss/charts — standalone, token-themed, SSR-safe SVG charts (bar/line/area/scatter/donut/pie) with an optional typed Vue 3 subpath. Covers install, the factory + Vue API, options, theming, security, and caveats.
+description: Use when adding charts with @vanduo-oss/charts — standalone, token-themed, SSR-safe SVG charts (bar/line/area/scatter/donut/pie) with an optional typed Vue 3 subpath. Covers install, the factory + Vue API, options, theming, security, and caveats. RETIRED 2026-07-25 — final version 0.2.0; successor: `@vanduo-oss/vd3-cbun/charts`; no further releases.
 ---
 
 # @vanduo-oss/charts
+
+> **⚠️ Retired — 2026-07-25.** `@vanduo-oss/charts` is no longer developed or released.
+> The Vanduo **legacy** line (the dual-engine Vanilla + Vue 3 system) is retired; development
+> continues in the **perspective** line. `@vanduo-oss/vd3-cbun/charts` is the successor. The final release, `0.2.0`, stays on npm and keeps working — this is a stop to development, not a removal.
+>
+> New docs: <https://vanduo-oss.github.io/vd3-docs/> · Migration guide: <https://vanduo-oss.github.io/vd3-docs/guides/migration>
 
 Standalone **SVG-first charts** for the Vanduo design system: data in, accessible SVG out. Token-themed and SSR-safe; framework-agnostic with an optional typed Vue 3 layer at `./vue`. Intentionally small — no data fetching, Canvas, or grammar-of-graphics DSL.
 
